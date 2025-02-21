@@ -16,7 +16,7 @@ class MicroworldsTwitterCrawler:
         # users may use any other actor id that can crawl twitter data
         self.actor_id = "microworlds/twitter-scraper"
 
-    def get_tweet_by_url(self, url: str, max_size=20):
+    def get_tweet_by_url(self, url: str, max_size=50):
         """
         Get tweets by urls.
 
