@@ -1,9 +1,7 @@
 import os
-import time
 import openai
 import asyncio
 import bittensor as bt
-from datetime import datetime
 from dotenv import load_dotenv
 from openkaito.base.miner import BaseMinerNeuron
 from openkaito.protocol import TextEmbeddingSynapse
@@ -33,11 +31,19 @@ class Miner(BaseMinerNeuron):
             timeout=5,
         )
 
+    async def forward(self, synapse: bt.Synapse) -> bt.Synapse:
+        """
+        Generic forward function that directs requests to the correct method.
+        """
+        if isinstance(synapse, TextEmbeddingSynapse):
+            return await self.forward_text_embedding(synapse)
+        else:
+            bt.logging.warning(f"Unsupported synapse type: {type(synapse)}")
+            return synapse  # Return unchanged if unsupported.
+
     async def forward_text_embedding(self, query: TextEmbeddingSynapse) -> TextEmbeddingSynapse:
         """
         Handles incoming text embedding requests.
-        :param query: TextEmbeddingSynapse object containing texts and dimensions.
-        :return: Updated TextEmbeddingSynapse with results.
         """
         try:
             embeddings = openai_embeddings_tensor(
