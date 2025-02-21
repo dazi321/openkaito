@@ -28,7 +28,7 @@ class ApiDojoTwitterCrawler:
         params = {
             "startUrls": urls,
             "maxItems": len(urls),
-            "maxTweetsPerQuery": 1,
+            "maxTweetsPerQuery": 10,
             "onlyImage": False,
             "onlyQuote": False,
             "onlyTwitterBlue": False,
