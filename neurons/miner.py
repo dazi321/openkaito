@@ -95,7 +95,7 @@ if __name__ == "__main__":
     print(f"My Miner hotkey: {miner_hotkey}")
 
     async def run_miner():
-        await asyncio.sleep(120)  # Wait for 120 seconds before starting
+        await asyncio.sleep(60)  # Wait for 120 seconds before starting
         while True:
             miner.print_info()
             await asyncio.sleep(5)  # Replace 30 seconds with 5 seconds for faster updates
