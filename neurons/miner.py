@@ -1,92 +1,63 @@
 import os
-import openai
+import time
 import asyncio
+import openai
 import bittensor as bt
 from dotenv import load_dotenv
 from openkaito.base.miner import BaseMinerNeuron
-from openkaito.protocol import TextEmbeddingSynapse
 from openkaito.utils.embeddings import openai_embeddings_tensor
 from openkaito.utils.version import compare_version, get_version
+from openkaito.protocol import TextEmbeddingSynapse
 
 # Load environment variables
 load_dotenv()
 
 class Miner(BaseMinerNeuron):
     """
-    Custom miner neuron for the OpenKaito subnet.
-    Handles text embedding requests using OpenAI's API.
+    OpenKaito Miner optimized for text embedding requests.
     """
-
     def __init__(self):
-        super(Miner, self).__init__()
-        self.client = self.init_openai_client()
-
-    def init_openai_client(self):
-        """Initialize OpenAI client with environment variables."""
-        return openai.OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
+        super().__init__()
+        self.client = openai.OpenAI(
+            api_key=os.environ["OPENAI_API_KEY"],
             organization=os.getenv("OPENAI_ORGANIZATION"),
             project=os.getenv("OPENAI_PROJECT"),
-            max_retries=2,
-            timeout=5,
+            max_retries=3,
         )
 
-    async def forward(self, synapse: bt.Synapse) -> bt.Synapse:
-        """
-        Generic forward function that directs requests to the correct method.
-        """
-        if isinstance(synapse, TextEmbeddingSynapse):
-            return await self.forward_text_embedding(synapse)
-        else:
-            bt.logging.warning(f"Unsupported synapse type: {type(synapse)}")
-            return synapse  # Return unchanged if unsupported.
-
     async def forward_text_embedding(self, query: TextEmbeddingSynapse) -> TextEmbeddingSynapse:
-        """
-        Handles incoming text embedding requests.
-        """
-        try:
-            embeddings = openai_embeddings_tensor(
-                self.client, query.texts, dimensions=query.dimensions, model="text-embedding-3-large"
-            )
-            query.results = embeddings.tolist()
-        except Exception as e:
-            bt.logging.error(f"Error generating embeddings: {e}")
-            query.results = []
+        """Processes text embedding requests asynchronously."""
+        query.results = openai_embeddings_tensor(
+            self.client, query.texts, dimensions=query.dimensions, model="text-embedding-3-large"
+        ).tolist()
         return query
 
     def print_info(self):
-        """Logs miner's current state and statistics."""
+        """Logs miner status in real time."""
         try:
-            self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
-            log_msg = (
-                f"Miner | Epoch: {self.step} | UID: {self.uid} | Block: {self.block} | "
-                f"Stake: {self.metagraph.S[self.uid]:.4f} | Rank: {self.metagraph.R[self.uid]:.4f} | "
-                f"Trust: {self.metagraph.T[self.uid]:.4f} | Consensus: {self.metagraph.C[self.uid]:.4f} | "
-                f"Incentive: {self.metagraph.I[self.uid]:.4f} | Emission: {self.metagraph.E[self.uid]:.4f}"
+            metagraph = self.metagraph
+            uid = metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+            log = (
+                f"Epoch:{self.step} | UID:{uid} | Stake:{metagraph.S[uid]:.6f} | "
+                f"Rank:{metagraph.R[uid]:.4f} | Trust:{metagraph.T[uid]:.4f} | "
+                f"Consensus:{metagraph.C[uid]:.4f} | Incentive:{metagraph.I[uid]:.6f} | "
+                f"Emission:{metagraph.E[uid]:.6f}"
             )
-            bt.logging.info(log_msg)
+            bt.logging.info(log)
         except Exception as e:
-            bt.logging.error(f"Error printing miner info: {e}")
+            bt.logging.warning(f"Error printing miner info: {e}")
 
     def check_version(self, query):
-        """Warns if the received request version is newer than the current miner version."""
+        """Checks for version mismatches and warns if needed."""
         if query.version and compare_version(query.version, get_version()) > 0:
             bt.logging.warning(
-                f"Received request version {query.version} is newer than miner version {get_version()}."
-                " Consider updating the repo and restarting the miner."
+                f"Received request with newer version {query.version}. Consider updating your miner."
             )
 
-async def run_miner(miner):
-    """
-    Runs the miner asynchronously, logging information at regular intervals.
-    """
-    await asyncio.sleep(60)  # Wait for 60 seconds before starting
-    while True:
-        miner.print_info()
-        await asyncio.sleep(5)  # Faster updates
-
 if __name__ == "__main__":
-    miner = Miner()
-    print(f"My Miner hotkey: {miner.wallet.hotkey.ss58_address}")
-    asyncio.run(run_miner(miner))
+    with Miner() as miner:
+        print(f"Miner hotkey: {miner.wallet.hotkey.ss58_address}")
+        asyncio.run(asyncio.sleep(60))
+        while True:
+            miner.print_info()
+            time.sleep(15)
