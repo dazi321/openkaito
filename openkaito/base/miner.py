@@ -5,6 +5,7 @@ import threading
 import traceback
 import bittensor as bt
 import torch
+import typing
 from dotenv import load_dotenv
 from openkaito.base.neuron import BaseNeuron
 from openkaito.protocol import (
